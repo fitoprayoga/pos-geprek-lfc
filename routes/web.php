@@ -44,9 +44,7 @@ Route::middleware(['auth', 'role:OWNER'])->group(function () {
 
 // Route Area POS KASIR (Terproteksi Auth & Role KASIR)
 Route::middleware(['auth', 'role:KASIR'])->group(function () {
-    Route::get('/pos', function () {
-        return response('POS Kasir', 200);
-    })->name('pos');
+    Route::get('/pos', [TransaksiController::class, 'index'])->name('pos');
 
     // Manajemen Sesi Outlet Kasir
     Route::post('/outlet/buka', [SesiOutletController::class, 'openOutlet'])->name('outlet.buka');

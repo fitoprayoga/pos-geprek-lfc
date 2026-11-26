@@ -374,4 +374,76 @@ class TransaksiTest extends TestCase
 
         $responseBayar->assertStatus(403);
     }
+
+    public function test_pos_index_renders_outlet_session_and_menu_stock_flags(): void
+    {
+        // Menu kedua yang stok bahannya habis
+        $bahanKosong = BahanBaku::create([
+            'outlet_id' => $this->outlet->id,
+            'nama_bahan' => 'Sambal Matah',
+            'stok' => 0,
+            'satuan' => 'gram',
+            'stok_minimal' => 10,
+        ]);
+
+        $menuHabis = Menu::create([
+            'nama_menu' => 'Ayam Sambal Matah',
+            'kategori' => 'MAKANAN',
+            'harga' => 18000,
+            'status_aktif' => true,
+        ]);
+
+        ResepMenu::create([
+            'id_menu' => $menuHabis->id,
+            'id_bahan' => $bahanKosong->id,
+            'jumlah_dibutuhkan' => 10,
+        ]);
+
+        // Menu nonaktif tidak boleh tampil
+        Menu::create([
+            'nama_menu' => 'Menu Rahasia Nonaktif',
+            'kategori' => 'LAINNYA',
+            'harga' => 99000,
+            'status_aktif' => false,
+        ]);
+
+        // 1. Saat sesi belum dibuka -> tampil overlay TUTUP & nama outlet dinamis
+        $responseTutup = $this->actingAs($this->kasir)->get('/pos');
+        $responseTutup->assertStatus(200)
+            ->assertSee('LFC Cabang Merdeka')
+            ->assertSee('TUTUP')
+            ->assertSee('Buka Outlet Sekarang')
+            ->assertSee('Ayam Geprek Sambal Korek')
+            ->assertSee('Ayam Sambal Matah')
+            ->assertSee('STOK HABIS')
+            ->assertDontSee('Menu Rahasia Nonaktif');
+
+        // 2. Saat sesi BUKA -> tampil status OPEN
+        SesiOutlet::create([
+            'id_kasir' => $this->kasir->id,
+            'outlet_id' => $this->outlet->id,
+            'tanggal' => now()->toDateString(),
+            'jam_buka' => now()->format('H:i:s'),
+            'status' => 'BUKA',
+            'total_rekap_penjualan' => 0,
+        ]);
+
+        $responseBuka = $this->actingAs($this->kasir)->get('/pos');
+        $responseBuka->assertStatus(200)
+            ->assertSee('OPEN')
+            ->assertSee('Ringkasan & Pembayaran')
+            ->assertSee('TUNAI (Cash)')
+            ->assertSee('QRIS')
+            ->assertSee('Konfirmasi & Cetak Struk')
+            ->assertSee('Pembayaran Berhasil!')
+            ->assertSee('Cetak Ulang Struk')
+            ->assertSee('+ Transaksi Baru')
+            ->assertViewHas('menus', function ($menus) use ($menuHabis) {
+                $tersedia = $menus->firstWhere('id', $this->menuAyamGeprek->id);
+                $habis = $menus->firstWhere('id', $menuHabis->id);
+
+                return $tersedia && ! $tersedia->stok_habis
+                    && $habis && $habis->stok_habis;
+            });
+    }
 }
