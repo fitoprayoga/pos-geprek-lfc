@@ -13,9 +13,64 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 
 class TransaksiController extends Controller
 {
+    /**
+     * Menampilkan halaman utama POS Kasir (Home Menu).
+     *
+     * GET /pos
+     */
+    public function index(Request $request): View
+    {
+        $kasir = $request->user();
+        $outlet = $kasir->outlet;
+
+        $sesiAktif = $kasir->outlet_id
+            ? SesiOutlet::where('outlet_id', $kasir->outlet_id)
+                ->whereDate('tanggal', now()->toDateString())
+                ->where('status', 'BUKA')
+                ->latest()
+                ->first()
+            : null;
+
+        $menus = Menu::aktif()
+            ->with('resepMenus.bahanBaku')
+            ->orderBy('kategori')
+            ->orderBy('nama_menu')
+            ->get();
+
+        $bahanOutlet = $kasir->outlet_id
+            ? BahanBaku::where('outlet_id', $kasir->outlet_id)->get()
+            : collect();
+
+        $bahanById = $bahanOutlet->keyBy('id');
+        $bahanByNama = $bahanOutlet->keyBy('nama_bahan');
+
+        foreach ($menus as $menu) {
+            $stokHabis = false;
+
+            if ($kasir->outlet_id) {
+                foreach ($menu->resepMenus as $resep) {
+                    $bahan = $bahanById->get($resep->id_bahan)
+                        ?? ($resep->bahanBaku ? $bahanByNama->get($resep->bahanBaku->nama_bahan) : null);
+
+                    if (! $bahan || (float) $bahan->stok < (float) $resep->jumlah_dibutuhkan) {
+                        $stokHabis = true;
+                        break;
+                    }
+                }
+            }
+
+            $menu->stok_habis = $stokHabis;
+        }
+
+        $kategoris = $menus->pluck('kategori')->filter()->unique()->values();
+
+        return view('pos.index', compact('outlet', 'sesiAktif', 'menus', 'kategoris'));
+    }
+
     /**
      * Memeriksa ketersediaan stok bahan baku untuk menu yang dipilih.
      *
