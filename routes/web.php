@@ -40,6 +40,8 @@ Route::middleware(['auth', 'role:OWNER'])->group(function () {
     Route::post('/menu/store', [MenuController::class, 'storeMenu'])->name('menu.store');
     Route::put('/menu/{id}/update-harga', [MenuController::class, 'updateMenuPrice'])->name('menu.update-harga');
     Route::patch('/menu/{id}/status', [MenuController::class, 'deactivateMenu'])->name('menu.status');
+    Route::delete('/menu/{id}', [MenuController::class, 'destroyMenu'])->name('menu.destroy');
+    Route::post('/menu/bahan-baku', [MenuController::class, 'storeBahanBaku'])->name('menu.bahan-baku.store');
 });
 
 // Route Area POS KASIR (Terproteksi Auth & Role KASIR)
