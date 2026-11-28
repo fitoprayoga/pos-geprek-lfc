@@ -25,8 +25,21 @@
             scrollbar-width: none;
         }
 
-        /* Styling Cetak Struk Thermal Khusus Print */
+        /* Styling Cetak Struk Thermal Khusus Print (58mm/80mm) */
         @media print {
+            @page {
+                size: 58mm auto;
+                margin: 0;
+            }
+
+            html,
+            body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+            }
+
             body * {
                 visibility: hidden !important;
             }
@@ -34,25 +47,52 @@
             #printable-receipt-card,
             #printable-receipt-card * {
                 visibility: visible !important;
+                color: #000000 !important;
+                box-shadow: none !important;
+                text-shadow: none !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
             #printable-receipt-card {
-                position: fixed !important;
+                position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
-                width: 78mm !important;
-                max-width: 100% !important;
+                width: 58mm !important;
+                max-width: 58mm !important;
+                box-sizing: border-box !important;
                 margin: 0 !important;
-                padding: 4mm !important;
+                padding: 3mm 2mm !important;
                 border: none !important;
-                box-shadow: none !important;
-                background: white !important;
-                color: black !important;
+                border-radius: 0 !important;
+                background: #ffffff !important;
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+                font-size: 10.5px !important;
+                line-height: 1.35 !important;
+                font-weight: 600 !important;
             }
 
-            @page {
-                size: auto;
-                margin: 2mm;
+            #printable-receipt-card h3 {
+                font-size: 12px !important;
+                font-weight: 800 !important;
+            }
+
+            #receipt-order-badge {
+                display: inline-block !important;
+                max-width: 100% !important;
+                background: #ffffff !important;
+                border: 1px dashed #000000 !important;
+                border-radius: 0 !important;
+                font-size: 10px !important;
+                font-weight: 700 !important;
+                word-break: break-all !important;
+                overflow-wrap: anywhere !important;
+            }
+
+            #receipt-change-box {
+                background: #ffffff !important;
+                border: 1px dashed #000000 !important;
+                border-radius: 0 !important;
             }
         }
     </style>
@@ -533,59 +573,64 @@
                 </div>
                 <h2 class="text-xl sm:text-2xl font-extrabold text-stone-900">Pembayaran Berhasil!</h2>
                 <p id="success-receipt-datetime-kasir" class="text-xs text-stone-500 font-medium mt-1">
-                    {{ now()->translatedFormat('d M Y, H:i') }} WIB • Kasir: {{ $namaKasir }}
+                    {{ now('Asia/Jakarta')->locale('id')->translatedFormat('d M Y, H:i') }} WIB • Kasir: {{ $namaKasir }}
                 </p>
             </div>
 
             {{-- Kartu Struk Putih (Yang akan dicetak pada window.print()) --}}
-            <div id="printable-receipt-card" class="bg-white rounded-2xl shadow-sm border border-stone-200/80 p-4 sm:p-5 my-3.5 text-xs text-stone-800">
+            <div id="printable-receipt-card" class="bg-white rounded-2xl shadow-sm border border-stone-200/80 p-4 sm:p-5 my-3.5 text-xs text-stone-800 print:font-mono print:text-[10.5px] print:text-black print:bg-white print:rounded-none print:shadow-none print:border-0 print:m-0">
                 {{-- Header Toko --}}
-                <div class="text-center pb-2">
-                    <h3 class="font-extrabold text-sm sm:text-base text-stone-900 tracking-wide uppercase">LANA FRIED CHICKEN</h3>
-                    <p id="receipt-store-outlet" class="text-[11px] text-stone-500 mt-0.5">{{ $namaOutlet }}</p>
-                    <p id="receipt-store-address" class="text-[10px] text-stone-400 leading-tight">{{ $alamatOutlet }}</p>
-                    <div class="flex justify-center mt-2.5">
-                        <span id="receipt-order-badge" class="px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-200/70 font-bold text-[11px]">
+                <div class="text-center pb-2 print:pb-1">
+                    <h3 class="font-extrabold text-sm sm:text-base text-stone-900 tracking-wide uppercase print:text-black print:text-xs">LANA FRIED CHICKEN</h3>
+                    <p id="receipt-store-outlet" class="text-[11px] text-stone-500 mt-0.5 print:text-black print:text-[10px]">{{ $namaOutlet }}</p>
+                    <p id="receipt-store-address" class="text-[10px] text-stone-400 leading-tight print:text-black">{{ $alamatOutlet }}</p>
+                    <div class="flex justify-center mt-2.5 print:mt-1.5">
+                        <span id="receipt-order-badge" class="px-2.5 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-200/70 font-bold text-[11px] print:bg-white print:text-black print:border-dashed print:border-black print:rounded-none print:text-[10px] print:break-all print:px-1.5 print:py-0.5">
                             No. Order: #TRX
                         </span>
+                    </div>
+                    {{-- Waktu & Kasir (Hanya muncul saat cetak struk agar tidak dobel di layar) --}}
+                    <div id="receipt-print-meta" class="hidden print:block mt-1.5 text-[10px] leading-snug text-black">
+                        <div id="receipt-print-datetime">{{ now('Asia/Jakarta')->locale('id')->translatedFormat('d M Y, H:i') }} WIB</div>
+                        <div id="receipt-print-kasir">Kasir: {{ $namaKasir }}</div>
                     </div>
                 </div>
 
                 {{-- Garis Putus-putus --}}
-                <div class="border-t border-dashed border-stone-300 my-3"></div>
+                <div class="border-t border-dashed border-stone-300 my-3 print:border-black print:my-2"></div>
 
                 {{-- Daftar Item Struk --}}
-                <div id="receipt-items-container" class="space-y-2">
+                <div id="receipt-items-container" class="space-y-2 print:space-y-1">
                     {{-- Dinamis via JS --}}
                 </div>
 
                 {{-- Garis Putus-putus --}}
-                <div class="border-t border-dashed border-stone-300 my-3"></div>
+                <div class="border-t border-dashed border-stone-300 my-3 print:border-black print:my-2"></div>
 
                 {{-- Rincian Pembayaran --}}
-                <div class="space-y-1.5 text-xs">
-                    <div class="flex justify-between">
-                        <span class="text-stone-500">Metode Bayar</span>
-                        <span id="receipt-method-text" class="font-bold text-stone-900">TUNAI (Cash)</span>
+                <div class="space-y-1.5 text-xs print:space-y-1 print:text-[10.5px]">
+                    <div class="flex justify-between gap-2">
+                        <span class="text-stone-500 print:text-black">Metode Bayar</span>
+                        <span id="receipt-method-text" class="font-bold text-stone-900 print:text-black">TUNAI (Cash)</span>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-stone-500">Total Tagihan</span>
-                        <span id="receipt-total-bill-text" class="font-extrabold text-stone-900">Rp 0</span>
+                    <div class="flex justify-between gap-2">
+                        <span class="text-stone-500 print:text-black">Total Tagihan</span>
+                        <span id="receipt-total-bill-text" class="font-extrabold text-stone-900 print:text-black">Rp 0</span>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-stone-500">Uang Diterima</span>
-                        <span id="receipt-received-text" class="font-bold text-stone-900">Rp 0</span>
+                    <div class="flex justify-between gap-2">
+                        <span class="text-stone-500 print:text-black">Uang Diterima</span>
+                        <span id="receipt-received-text" class="font-bold text-stone-900 print:text-black">Rp 0</span>
                     </div>
 
                     {{-- Kotak Kembalian --}}
-                    <div class="bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 flex justify-between items-center text-xs font-bold text-emerald-800 mt-2">
+                    <div id="receipt-change-box" class="bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 flex justify-between items-center text-xs font-bold text-emerald-800 mt-2 print:bg-white print:text-black print:border-dashed print:border-black print:rounded-none print:px-2 print:py-1.5 print:mt-1.5 print:text-[10.5px]">
                         <span>Kembalian</span>
-                        <span id="receipt-change-text" class="text-sm font-extrabold text-emerald-700">Rp 0</span>
+                        <span id="receipt-change-text" class="text-sm font-extrabold text-emerald-700 print:text-black print:text-[11px]">Rp 0</span>
                     </div>
                 </div>
 
                 {{-- Footer Struk --}}
-                <p class="text-[10px] sm:text-[11px] text-stone-400 italic text-center mt-4 pt-2 border-t border-stone-100">
+                <p class="text-[10px] sm:text-[11px] text-stone-400 italic text-center mt-4 pt-2 border-t border-stone-100 print:text-black print:not-italic print:border-dashed print:border-black print:mt-2.5 print:pt-2 print:text-[10px]">
                     Terima kasih telah berbelanja di LFC!
                 </p>
             </div>
@@ -1295,15 +1340,48 @@
         }
 
         // 7. Tampilan Modal Struk Sukses
+        function formatReceiptDateTime(rawDateTime) {
+            if (!rawDateTime) return '';
+            const trimmed = String(rawDateTime).trim();
+
+            if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(trimmed)) {
+                const iso = trimmed.includes('T') ? trimmed : `${trimmed.replace(' ', 'T')}+07:00`;
+                const parsed = new Date(iso);
+                if (!Number.isNaN(parsed.getTime())) {
+                    const parts = new Intl.DateTimeFormat('id-ID', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false,
+                        timeZone: 'Asia/Jakarta',
+                    }).formatToParts(parsed);
+
+                    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+                    return `${map.day} ${map.month} ${map.year}, ${map.hour}:${map.minute} WIB`;
+                }
+            }
+
+            return trimmed.endsWith('WIB') ? trimmed : `${trimmed} WIB`;
+        }
+
         function displaySuccessReceipt(struk) {
             if (!struk) return;
 
             // Subtitle Tanggal & Jam & Kasir
+            const kasirName = struk.kasir?.nama_lengkap || struk.kasir?.username || '{{ $namaKasir }}';
+            const datetimeText = formatReceiptDateTime(struk.tanggal_waktu);
             const datetimeKasirEl = document.getElementById('success-receipt-datetime-kasir');
             if (datetimeKasirEl) {
-                const kasirName = struk.kasir?.nama_lengkap || struk.kasir?.username || '{{ $namaKasir }}';
-                datetimeKasirEl.textContent = `${struk.tanggal_waktu || ''} WIB • Kasir: ${kasirName}`;
+                datetimeKasirEl.textContent = `${datetimeText} • Kasir: ${kasirName}`;
             }
+
+            // Waktu & Kasir di dalam kartu struk (khusus print)
+            const printDatetimeEl = document.getElementById('receipt-print-datetime');
+            const printKasirEl = document.getElementById('receipt-print-kasir');
+            if (printDatetimeEl) printDatetimeEl.textContent = datetimeText;
+            if (printKasirEl) printKasirEl.textContent = `Kasir: ${kasirName}`;
 
             // Outlet info
             const outletEl = document.getElementById('receipt-store-outlet');
@@ -1321,9 +1399,9 @@
             const itemsContainer = document.getElementById('receipt-items-container');
             if (itemsContainer && Array.isArray(struk.items)) {
                 itemsContainer.innerHTML = struk.items.map((it) => `
-                    <div class="flex justify-between items-start text-xs">
-                        <span class="font-bold text-stone-900">${it.jumlah}x ${it.nama_menu}</span>
-                        <span class="font-extrabold text-stone-900">${formatRupiah(it.subtotal)}</span>
+                    <div class="flex justify-between items-start gap-2 text-xs print:text-[10.5px]">
+                        <span class="font-bold text-stone-900 min-w-0 break-words print:text-black">${it.jumlah}x ${it.nama_menu}</span>
+                        <span class="font-extrabold text-stone-900 shrink-0 whitespace-nowrap print:text-black">${formatRupiah(it.subtotal)}</span>
                     </div>
                 `).join('');
             }

@@ -29,7 +29,7 @@ class TransaksiController extends Controller
 
         $sesiAktif = $kasir->outlet_id
             ? SesiOutlet::where('outlet_id', $kasir->outlet_id)
-                ->whereDate('tanggal', now()->toDateString())
+                ->whereDate('tanggal', now('Asia/Jakarta')->toDateString())
                 ->where('status', 'BUKA')
                 ->latest()
                 ->first()
@@ -204,10 +204,11 @@ class TransaksiController extends Controller
         }
 
         $kembalian = max(0, $nominalBayar - $totalHarga);
+        $waktuTransaksi = now('Asia/Jakarta');
 
         try {
             // 2. Gunakan DB::transaction
-            $transaksi = DB::transaction(function () use ($kasir, $itemsData, $totalHarga, $metode, $nominalBayar, $kembalian) {
+            $transaksi = DB::transaction(function () use ($kasir, $itemsData, $totalHarga, $metode, $nominalBayar, $kembalian, $waktuTransaksi) {
                 // Verifikasi ketersediaan stok seluruh item sebelum memotong
                 foreach ($itemsData as $item) {
                     $resepMenus = ResepMenu::where('id_menu', $item['menu']->id)->with('bahanBaku')->get();
@@ -233,13 +234,13 @@ class TransaksiController extends Controller
                 }
 
                 // 3. Simpan transaksi ke tabel transaksis
-                $kodeTransaksi = 'TRX-'.now()->format('YmdHis').'-'.strtoupper(Str::random(4));
+                $kodeTransaksi = 'TRX-'.$waktuTransaksi->format('YmdHis').'-'.strtoupper(Str::random(4));
 
                 $transaksi = Transaksi::create([
                     'id_kasir' => $kasir->id,
                     'outlet_id' => $kasir->outlet_id,
                     'kode_transaksi' => $kodeTransaksi,
-                    'tanggal_waktu' => now(),
+                    'tanggal_waktu' => $waktuTransaksi,
                     'total_harga' => $totalHarga,
                     'metode_pembayaran' => $metode,
                     'nominal_bayar' => $nominalBayar,
@@ -281,7 +282,7 @@ class TransaksiController extends Controller
                                 'jenis_aksi' => 'KELUAR',
                                 'jumlah' => $pemakaian,
                                 'alasan' => 'Pemakaian transaksi '.$transaksi->kode_transaksi,
-                                'tanggal' => now(),
+                                'tanggal' => $waktuTransaksi,
                             ]);
                         }
                     }
@@ -304,7 +305,7 @@ class TransaksiController extends Controller
                 'data' => [
                     'struk' => [
                         'kode_transaksi' => $transaksi->kode_transaksi,
-                        'tanggal_waktu' => $transaksi->tanggal_waktu->format('Y-m-d H:i:s'),
+                        'tanggal_waktu' => $waktuTransaksi->copy()->locale('id')->translatedFormat('d M Y, H:i'),
                         'outlet' => [
                             'id' => $transaksi->outlet->id,
                             'nama_outlet' => $transaksi->outlet->nama_outlet,
