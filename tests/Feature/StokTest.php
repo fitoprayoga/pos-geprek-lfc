@@ -254,4 +254,46 @@ class StokTest extends TestCase
         $responseKeluar = $this->actingAs($this->kasir)->postJson('/stok/keluar', []);
         $responseKeluar->assertStatus(403);
     }
+
+    public function test_owner_can_record_decimal_stok_keluar_with_optional_catatan_and_calculate_estimasi_kerugian(): void
+    {
+        // Restock bahanAyam terlebih dahulu agar ada harga_satuan terakhir (Rp 30.000)
+        $this->actingAs($this->owner)->postJson('/stok/restock', [
+            'outlet_id' => $this->outlet1->id,
+            'id_supplier' => $this->supplier->id,
+            'items' => [
+                [
+                    'id_bahan' => $this->bahanAyam->id,
+                    'jumlah' => 5,
+                    'harga_satuan' => 30000,
+                ],
+            ],
+        ])->assertStatus(201);
+
+        // Catat stok keluar desimal + catatan opsional
+        $response = $this->actingAs($this->owner)->postJson('/stok/keluar', [
+            'id_bahan' => $this->bahanAyam->id,
+            'jumlah' => 1.5,
+            'alasan' => 'Bahan Busuk / Layu',
+            'catatan' => 'Sebagian stok layu di penyimpanan',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'id_bahan' => $this->bahanAyam->id,
+                    'jumlah_keluar' => 1.5,
+                    'sisa_stok' => 13.5,
+                    'alasan' => 'Bahan Busuk / Layu — Sebagian stok layu di penyimpanan',
+                ],
+            ]);
+
+        $indexResponse = $this->actingAs($this->owner)
+            ->getJson('/stok?outlet_id='.$this->outlet1->id);
+
+        $indexResponse->assertStatus(200)
+            ->assertJsonPath('data.jumlahStokKeluarBulanIni', 1)
+            ->assertJsonPath('data.estimasiKerugian', 45000);
+    }
 }
