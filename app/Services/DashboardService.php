@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\Models\BahanBaku;
+use App\Models\Outlet;
 use App\Models\RestockHeader;
 use App\Models\Transaksi;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class DashboardService
 {
@@ -103,5 +106,84 @@ class DashboardService
             'jumlah_restock' => $restocks->count(),
             'riwayat_restock' => $restocks,
         ];
+    }
+
+    /**
+     * Menghitung total revenue masing-masing outlet pada rentang tanggal terpilih,
+     * diurutkan dari revenue tertinggi ke terendah.
+     */
+    public function getPerformaOutlet(string $startDate, string $endDate): Collection
+    {
+        $start = Carbon::parse($startDate, 'Asia/Jakarta')->startOfDay();
+        $end = Carbon::parse($endDate, 'Asia/Jakarta')->endOfDay();
+
+        $revenues = Transaksi::lunas()
+            ->whereBetween('tanggal_waktu', [$start, $end])
+            ->select('outlet_id', DB::raw('SUM(total_harga) as total_revenue'))
+            ->groupBy('outlet_id')
+            ->pluck('total_revenue', 'outlet_id');
+
+        return Outlet::orderBy('nama_outlet')
+            ->get()
+            ->map(function (Outlet $outlet) use ($revenues) {
+                return [
+                    'id' => $outlet->id,
+                    'nama_outlet' => $outlet->nama_outlet,
+                    'total_revenue' => (float) ($revenues->get($outlet->id, 0)),
+                ];
+            })
+            ->sortByDesc('total_revenue')
+            ->values();
+    }
+
+    /**
+     * Mengambil daftar menu terlaris berdasarkan total porsi terjual dari transaksi lunas.
+     * Setelah query, foto_url di-resolve dari file public/images/menu-{id}.{ext} (aman untuk PostgreSQL GROUP BY).
+     */
+    public function getMenuTerlaris(string $startDate, string $endDate, ?int $outletId = null, int $limit = 10): Collection
+    {
+        $start = Carbon::parse($startDate, 'Asia/Jakarta')->startOfDay();
+        $end = Carbon::parse($endDate, 'Asia/Jakarta')->endOfDay();
+
+        $rows = DB::table('detail_transaksis')
+            ->join('transaksis', 'detail_transaksis.id_transaksi', '=', 'transaksis.id')
+            ->join('menus', 'detail_transaksis.id_menu', '=', 'menus.id')
+            ->where('transaksis.status_pembayaran', true)
+            ->whereBetween('transaksis.tanggal_waktu', [$start, $end])
+            ->when($outletId, fn ($query) => $query->where('transaksis.outlet_id', $outletId))
+            ->groupBy('menus.id', 'menus.nama_menu', 'menus.kategori')
+            ->select(
+                'menus.id',
+                'menus.nama_menu',
+                'menus.kategori',
+                DB::raw('SUM(detail_transaksis.jumlah) as total_porsi'),
+                DB::raw('SUM(detail_transaksis.subtotal) as total_penjualan')
+            )
+            ->orderByDesc('total_porsi')
+            ->orderByDesc('total_penjualan')
+            ->limit($limit)
+            ->get();
+
+        // Resolve foto_url untuk setiap menu (cek file di public/images/menu-{id}.{ext})
+        return $rows->map(function ($row) {
+            $row->foto_url = $this->resolveMenuPhotoUrl((int) $row->id);
+            return $row;
+        });
+    }
+
+    /**
+     * Mengembalikan URL foto menu jika file ada di public/images/menu-{id}.{jpg|jpeg|png}.
+     * Menggunakan mekanisme yang sama dengan MenuController::resolveMenuPhotoUrl.
+     */
+    private function resolveMenuPhotoUrl(int $menuId): ?string
+    {
+        foreach (['jpg', 'jpeg', 'png'] as $ext) {
+            $relative = "images/menu-{$menuId}.{$ext}";
+            if (file_exists(public_path($relative))) {
+                return asset($relative) . '?v=' . filemtime(public_path($relative));
+            }
+        }
+
+        return null;
     }
 }

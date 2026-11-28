@@ -29,6 +29,7 @@ Route::middleware(['auth', 'role:OWNER'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/filter', [DashboardController::class, 'filterDashboard'])->name('dashboard.filter');
     Route::get('/dashboard/export', [DashboardController::class, 'exportLaporan'])->name('dashboard.export');
+    Route::get('/laporan', [DashboardController::class, 'laporan'])->name('laporan.index');
 
     // Manajemen Stok Bahan Baku & Restock
     Route::get('/stok', [StokController::class, 'index'])->name('stok.index');
