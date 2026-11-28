@@ -41,6 +41,52 @@ class DashboardController extends Controller
     }
 
     /**
+     * Menampilkan halaman khusus Laporan Penjualan Owner dengan filter outlet & tanggal.
+     *
+     * GET /laporan
+     */
+    public function laporan(Request $request): mixed
+    {
+        $validated = $request->validate([
+            'outlet_id' => ['nullable', 'integer', 'exists:outlets,id'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+        ]);
+
+        $today = now('Asia/Jakarta')->toDateString();
+        $startDate = $validated['start_date'] ?? $today;
+        $endDate = $validated['end_date'] ?? $today;
+        $outletId = isset($validated['outlet_id']) ? (int) $validated['outlet_id'] : null;
+
+        $ringkasan = $this->dashboardService->getRingkasanPenjualan($startDate, $endDate, $outletId);
+        $pengeluaran = $this->dashboardService->getLaporanPengeluaranRestock($startDate, $endDate, $outletId);
+        $performaOutlet = $this->dashboardService->getPerformaOutlet($startDate, $endDate);
+        $menuTerlaris = $this->dashboardService->getMenuTerlaris($startDate, $endDate, $outletId, 10);
+        $outlets = Outlet::orderBy('nama_outlet')->get();
+        $selectedOutlet = $outletId ? $outlets->firstWhere('id', $outletId) : null;
+
+        $activePreset = $this->detectDatePreset($startDate, $endDate, $today);
+        $dateRangeLabel = $this->formatDateRangeLabel($startDate, $endDate, $activePreset);
+
+        return view('owner.laporan', [
+            'filter' => [
+                'outlet_id' => $outletId,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ],
+            'outlets' => $outlets,
+            'selectedOutlet' => $selectedOutlet,
+            'totalRevenue' => (float) ($ringkasan['total_revenue'] ?? 0),
+            'totalTransaksi' => (int) ($ringkasan['total_volume_transaksi'] ?? 0),
+            'totalRestock' => (float) ($pengeluaran['total_pengeluaran'] ?? 0),
+            'performaOutlet' => $performaOutlet,
+            'menuTerlaris' => $menuTerlaris,
+            'activePreset' => $activePreset,
+            'dateRangeLabel' => $dateRangeLabel,
+        ]);
+    }
+
+    /**
      * Memproses filter berdasarkan outlet_id dan rentang tanggal, mengembalikan JSON.
      *
      * GET /dashboard/filter
@@ -160,5 +206,47 @@ class DashboardController extends Controller
             'laporan_stok' => $this->dashboardService->getLaporanStokBahan($outletId),
             'laporan_pengeluaran_restock' => $this->dashboardService->getLaporanPengeluaranRestock($startDate, $endDate, $outletId),
         ];
+    }
+
+    /**
+     * Mendeteksi preset rentang tanggal aktif berdasarkan start_date dan end_date.
+     */
+    private function detectDatePreset(string $startDate, string $endDate, string $today): string
+    {
+        $now = Carbon::parse($today, 'Asia/Jakarta');
+
+        if ($startDate === $today && $endDate === $today) {
+            return 'today';
+        }
+
+        if ($startDate === $now->copy()->subDays(6)->toDateString() && $endDate === $today) {
+            return '7d';
+        }
+
+        if ($startDate === $now->copy()->subDays(29)->toDateString() && $endDate === $today) {
+            return '30d';
+        }
+
+        if ($startDate === $now->copy()->startOfMonth()->toDateString() && $endDate === $today) {
+            return 'month';
+        }
+
+        return 'custom';
+    }
+
+    /**
+     * Memformat label tombol filter rentang tanggal agar ringkas dan mudah dibaca.
+     */
+    private function formatDateRangeLabel(string $startDate, string $endDate, string $preset): string
+    {
+        return match ($preset) {
+            'today' => 'Hari Ini',
+            '7d' => '7 Hari Terakhir',
+            '30d' => '30 Hari Terakhir',
+            'month' => 'Bulan Ini',
+            default => $startDate === $endDate
+                ? Carbon::parse($startDate)->translatedFormat('d M Y')
+                : Carbon::parse($startDate)->translatedFormat('d M') . ' - ' . Carbon::parse($endDate)->translatedFormat('d M Y'),
+        };
     }
 }
