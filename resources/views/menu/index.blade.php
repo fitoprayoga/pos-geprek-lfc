@@ -129,24 +129,28 @@
 
         {{-- Daftar / Tabel Katalog Menu & Resep --}}
         <section aria-label="Daftar Katalog Menu">
-            {{-- Tampilan Kartu Responsif (HP & Tablet, dan Mode Compact) --}}
-            <div id="menu-card-list" class="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-3"></div>
+            {{-- Tampilan Kartu Khusus Mobile (< md) --}}
+            <div class="block md:hidden">
+                <div id="menu-card-list" class="grid grid-cols-1 gap-3"></div>
+            </div>
 
-            {{-- Tampilan Tabel Katalog Khusus Desktop (>=1024px) --}}
-            <div id="menu-table-wrapper" class="hidden lg:block bg-white rounded-2xl border border-stone-200/80 shadow-2xs overflow-hidden">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-stone-50/80 border-b border-stone-100 text-[11px] font-bold uppercase tracking-wider text-stone-500">
-                            <th class="py-3.5 px-4">Menu</th>
-                            <th class="py-3.5 px-3 whitespace-nowrap">Kategori</th>
-                            <th class="py-3.5 px-3 whitespace-nowrap min-w-[140px]">Harga Jual</th>
-                            <th class="py-3.5 px-3">Komposisi Resep (Stok Outlet)</th>
-                            <th class="py-3.5 px-3 text-center whitespace-nowrap">Status POS</th>
-                            <th class="py-3.5 px-4 text-right whitespace-nowrap">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="menu-table-body" class="divide-y divide-stone-100 text-sm"></tbody>
-                </table>
+            {{-- Tampilan Tabel Katalog Khusus Desktop (>= md) --}}
+            <div class="hidden md:block">
+                <div id="menu-table-wrapper" class="bg-white rounded-2xl border border-stone-200/80 shadow-2xs overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-stone-50/80 border-b border-stone-100 text-[11px] font-bold uppercase tracking-wider text-stone-500">
+                                <th class="py-3.5 px-4">Menu</th>
+                                <th class="py-3.5 px-3 whitespace-nowrap">Kategori</th>
+                                <th class="py-3.5 px-3 whitespace-nowrap min-w-[140px]">Harga Jual</th>
+                                <th class="py-3.5 px-3">Komposisi Resep (Stok Outlet)</th>
+                                <th class="py-3.5 px-3 text-center whitespace-nowrap">Status POS</th>
+                                <th class="py-3.5 px-4 text-right whitespace-nowrap">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="menu-table-body" class="divide-y divide-stone-100 text-sm"></tbody>
+                    </table>
+                </div>
             </div>
 
             {{-- Empty State --}}
